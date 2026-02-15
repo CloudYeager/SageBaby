@@ -841,8 +841,10 @@ p {
   </div>
   
 <!-- Background Music -->
-<audio id="bgMusic" class="audio-player" loop>
+<audio id="bgMusic" class="audio-player" loop preload="auto" volume="0.7">
   <source src="Iris.mp3" type="audio/mpeg">
+  <source src="Iris.ogg" type="audio/ogg">
+  <source src=Iris.mp3" type="audio/mpeg">
   <source src="Iris.ogg" type="audio/ogg">
   Your browser does not support the audio element.
 </audio>
@@ -970,36 +972,97 @@ const musicBtn = document.getElementById("musicBtn");
 const musicIcon = document.getElementById("musicIcon");
 let isPlaying = false;
 
+// Set volume (0.0 to 1.0)
+if (bgMusic) {
+  bgMusic.volume = 0.7;
+}
+
+// Handle audio loading errors
+bgMusic.addEventListener('error', function(e) {
+  console.log('Audio loading error:', e);
+  // Try alternative path if main path fails
+  if (bgMusic.src && !bgMusic.src.includes('./')) {
+    const sources = bgMusic.querySelectorAll('source');
+    if (sources.length > 0) {
+      // Try next source
+      const currentSrc = bgMusic.currentSrc || bgMusic.src;
+      console.log('Trying alternative audio source');
+    }
+  }
+});
+
+// Handle audio loaded
+bgMusic.addEventListener('loadeddata', function() {
+  console.log('Audio loaded successfully');
+});
+
 // Toggle music function
 function toggleMusic() {
+  if (!bgMusic) return;
+  
   if (isPlaying) {
     bgMusic.pause();
     musicIcon.textContent = "🎵";
     musicBtn.classList.remove("playing");
     isPlaying = false;
   } else {
-    bgMusic.play().catch(error => {
-      console.log("Autoplay prevented. User interaction required.");
-      // If autoplay fails, show a message or handle it gracefully
-    });
-    musicIcon.textContent = "🎶";
-    musicBtn.classList.add("playing");
-    isPlaying = true;
+    // Set volume before playing
+    bgMusic.volume = 0.7;
+    
+    const playPromise = bgMusic.play();
+    
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        // Audio is playing
+        musicIcon.textContent = "🎶";
+        musicBtn.classList.add("playing");
+        isPlaying = true;
+      }).catch(error => {
+        console.log("Autoplay prevented. User interaction required:", error);
+        // Show user they need to interact
+        musicIcon.textContent = "🔇";
+      });
+    }
   }
 }
 
 // Try to play music on user interaction (when they click anywhere)
 document.addEventListener('click', function() {
-  if (!isPlaying && bgMusic.paused) {
-    bgMusic.play().then(() => {
-      musicIcon.textContent = "🎶";
-      musicBtn.classList.add("playing");
-      isPlaying = true;
-    }).catch(error => {
-      // Autoplay was prevented, user needs to click the button
-    });
+  if (bgMusic && !isPlaying && bgMusic.paused) {
+    bgMusic.volume = 0.7;
+    const playPromise = bgMusic.play();
+    
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        musicIcon.textContent = "🎶";
+        musicBtn.classList.add("playing");
+        isPlaying = true;
+      }).catch(error => {
+        // Autoplay was prevented, user needs to click the button
+        console.log("Autoplay prevented on first click");
+      });
+    }
   }
 }, { once: true });
+
+// Handle page visibility - pause when tab is hidden, resume when visible
+document.addEventListener('visibilitychange', function() {
+  if (bgMusic) {
+    if (document.hidden) {
+      // Tab is hidden, pause music
+      if (isPlaying) {
+        bgMusic.pause();
+      }
+    } else {
+      // Tab is visible, resume if it was playing
+      if (isPlaying && bgMusic.paused) {
+        bgMusic.play().catch(error => {
+          console.log("Could not resume audio:", error);
+        });
+      }
+    }
+  }
+});
 
 // Modal elements
 const modal = document.getElementById("giftModal");
